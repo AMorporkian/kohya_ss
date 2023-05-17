@@ -60,7 +60,6 @@ def generate_step_logs(args: argparse.Namespace, current_loss, avr_loss, lr_sche
 
     return logs
 
-
 def train(args):
     session_id = random.randint(0, 2**32)
     training_started_at = time.time()
@@ -71,6 +70,11 @@ def train(args):
     use_dreambooth_method = args.in_json is None
     use_user_config = args.dataset_config is not None
 
+    if args.validation_ratio is None:
+        validation_ratio = 0
+        
+    validation_ratio = args.validation_ratio
+    
     if args.seed is None:
         args.seed = random.randint(0, 2**32)
     set_seed(args.seed)
@@ -110,19 +114,21 @@ def train(args):
                         ]
                     }
                 ]
-            }
+            }        
+    
 
     blueprint = blueprint_generator.generate(user_config, args, tokenizer=tokenizer)
-    train_dataset_group = config_util.generate_dataset_group_by_blueprint(blueprint.dataset_group)
+    train_dataset_group, validation_dataset_group = config_util.generate_dataset_group_by_blueprint(blueprint.dataset_group)
 
     current_epoch = Value("i", 0)
     current_step = Value("i", 0)
     ds_for_collater = train_dataset_group if args.max_data_loader_n_workers == 0 else None
     collater = train_util.collater_class(current_epoch, current_step, ds_for_collater)
-
+    validation_collater = train_util.collater_class(current_epoch, current_step, validation_dataset_group)
     if args.debug_dataset:
         train_util.debug_dataset(train_dataset_group)
         return
+    
     if len(train_dataset_group) == 0:
         print(
             "No data found. Please verify arguments (train_data_dir must be the parent of folders with images) / 画像がありません。引数指定を確認してください（train_data_dirには画像があるフォルダではなく、画像があるフォルダの親フォルダを指定する必要があります）"
@@ -215,8 +221,8 @@ def train(args):
 
     # dataloaderを準備する
     # DataLoaderのプロセス数：0はメインプロセスになる
-    n_workers = min(args.max_data_loader_n_workers, os.cpu_count() - 1)  # cpu_count-1 ただし最大で指定された数まで
-
+    n_workers = min(args.max_data_loader_n_workers, os.cpu_count() - 1)  # cpu_count-1 ただし最大で指定された数ま
+                 
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset_group,
         batch_size=1,
@@ -225,7 +231,15 @@ def train(args):
         num_workers=n_workers,
         persistent_workers=args.persistent_data_loader_workers,
     )
-
+    validation_dataloader = torch.utils.data.DataLoader(
+        validation_dataset_group,
+        batch_size=1,
+        shuffle=True,
+        collate_fn=collater,
+        num_workers=n_workers,
+        persistent_workers=args.persistent_data_loader_workers,
+    )
+        
     # 学習ステップ数を計算する
     if args.max_train_epochs is not None:
         args.max_train_steps = args.max_train_epochs * math.ceil(
@@ -358,6 +372,7 @@ def train(args):
         "ss_face_crop_aug_range": args.face_crop_aug_range,
         "ss_prior_loss_weight": args.prior_loss_weight,
         "ss_min_snr_gamma": args.min_snr_gamma,
+        "ss_validation_ratio": args.validation_ratio,
     }
 
     if use_user_config:
@@ -553,6 +568,7 @@ def train(args):
             os.remove(old_ckpt_file)
 
     # training loop
+    validation_loss_weights = []
     for epoch in range(num_train_epochs):
         if is_main_process:
             print(f"\nepoch {epoch+1}/{num_train_epochs}")
@@ -658,7 +674,7 @@ def train(args):
                         if remove_step_no is not None:
                             remove_ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no)
                             remove_model(remove_ckpt_name)
-
+            
             current_loss = loss.detach().item()
             if epoch == 0:
                 loss_list.append(current_loss)
@@ -667,7 +683,8 @@ def train(args):
                 loss_list[step] = current_loss
             loss_total += current_loss
             avr_loss = loss_total / len(loss_list)
-            logs = {"loss": avr_loss}  # , "lr": lr_scheduler.get_last_lr()[0]}
+            
+            logs = {"loss": avr_loss, "val_loss": l}  # , "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
 
             if args.logging_dir is not None:
@@ -677,8 +694,61 @@ def train(args):
             if global_step >= args.max_train_steps:
                 break
 
+        for step, batch in enumerate(validation_dataloader):   
+                with torch.no_grad():
+                    if "latents" in batch and batch["latents"] is not None:
+                        latents = batch["latents"].to(accelerator.device)
+                    else:
+                        # latentに変換
+                        latents = vae.encode(batch["images"].to(dtype=weight_dtype)).latent_dist.sample()
+                    latents = latents * 0.18215
+                b_size = latents.shape[0]
+
+                with torch.set_grad_enabled(train_text_encoder):
+                    # Get the text embedding for conditioning
+                    if args.weighted_captions:
+                        encoder_hidden_states = get_weighted_text_embeddings(
+                            tokenizer,
+                            text_encoder,
+                            batch["captions"],
+                            accelerator.device,
+                            args.max_token_length // 75 if args.max_token_length else 1,
+                            clip_skip=args.clip_skip,
+                        )
+                    else:
+                        input_ids = batch["input_ids"].to(accelerator.device)
+                        encoder_hidden_states = train_util.get_hidden_states(args, input_ids, tokenizer, text_encoder, weight_dtype)
+
+                # Sample noise that we'll add to the latents
+                noise = torch.randn_like(latents, device=latents.device)
+                if args.noise_offset:
+                    noise = apply_noise_offset(latents, noise, args.noise_offset, args.adaptive_noise_scale)
+                elif args.multires_noise_iterations:
+                    noise = pyramid_noise_like(noise, latents.device, args.multires_noise_iterations, args.multires_noise_discount)
+
+                # Sample a random timestep for each image
+                timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (b_size,), device=latents.device)
+                timesteps = timesteps.long()
+                # Add noise to the latents according to the noise magnitude at each timestep
+                # (this is the forward diffusion process)
+                noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+
+                # Predict the noise residual
+                with accelerator.autocast():
+                    noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
+
+                if args.v_parameterization:
+                    # v-parameterization training
+                    target = noise_scheduler.get_velocity(latents, noise, timesteps)
+                else:
+                    target = noise
+
+                l = torch.nn.functional.mse_loss(noise_pred.float(), target.float(), reduction="none")
+                l = l.mean([1, 2, 3])
+
+                validation_loss_weights[step] = l.detach().item()
         if args.logging_dir is not None:
-            logs = {"loss/epoch": loss_total / len(loss_list)}
+            logs = {"loss/epoch": loss_total / len(loss_list), "val_loss/epoch": validation_loss_weights.mean()}
             accelerator.log(logs, step=epoch + 1)
 
         accelerator.wait_for_everyone()
