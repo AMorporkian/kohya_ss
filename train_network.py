@@ -12,7 +12,7 @@ from multiprocessing import Value
 from tqdm import tqdm
 import torch
 from accelerate.utils import set_seed
-from diffusers import DPMSolverMultistepScheduler
+from diffusers import DDPMScheduler
 
 import library.train_util as train_util
 from library.train_util import (
@@ -516,7 +516,7 @@ def train(args):
     progress_bar = tqdm(range(args.max_train_steps), smoothing=0, disable=not accelerator.is_local_main_process, desc="steps")
     global_step = 0
 
-    noise_scheduler = DPMSolverMultistepScheduler(
+    noise_scheduler = DDPMScheduler(
         beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
     )
     
