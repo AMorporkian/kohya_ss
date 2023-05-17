@@ -36,17 +36,7 @@ def add_custom_train_arguments(parser: argparse.ArgumentParser, support_weighted
             default=False,
             help="Enable weighted captions in the standard style (token:1.3). No commas inside parens, or shuffle/dropout may break the decoder. / 「[token]」、「(token)」「(token:1.3)」のような重み付きキャプションを有効にする。カンマを括弧内に入れるとシャッフルやdropoutで重みづけがおかしくなるので注意",
         )
-    parser.add_argument(
-        "--validation_ratio",
-        type=float,
-        default=0.15,
-        help="Ratio of validation data to sample from the training set if validation is enabled. / バリデーションデータの割合",
-    )
-    parser.add_argument(
-        "--validation_enabled",
-        action="store_true",
-        default=False,
-        help="Enable validation to prevent overfitting. / 過学習を防ぐためにバリデーションを有効にする",)
+
 
 re_attention = re.compile(
     r"""

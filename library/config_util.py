@@ -7,7 +7,6 @@ import functools
 import random
 from textwrap import dedent, indent
 import json
-import torch
 from pathlib import Path
 # from toolz import curry
 from typing import (
@@ -429,7 +428,6 @@ def generate_dataset_group_by_blueprint(dataset_group_blueprint: DatasetGroupBlu
 
   print(info)
 
-  # Make validation dataset
   # make buckets first because it determines the length of dataset
   # and set the same seed for all datasets
   seed = random.randint(0, 2**31) # actual seed is seed + epoch_no
@@ -437,8 +435,8 @@ def generate_dataset_group_by_blueprint(dataset_group_blueprint: DatasetGroupBlu
     print(f"[Dataset {i}]")
     dataset.make_buckets()
     dataset.set_seed(seed)
-  datasets, validation_set = torch.utils.data.random_split(datasets, [.85, .15], generator=torch.Generator().manual_seed(seed))
-  return DatasetGroup(datasets), DatasetGroup([validation_set])
+
+  return DatasetGroup(datasets)
 
 
 def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: Optional[str] = None, reg_data_dir: Optional[str] = None):
