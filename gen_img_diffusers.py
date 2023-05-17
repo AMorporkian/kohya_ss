@@ -1031,21 +1031,34 @@ class PipelineLike:
                 ).sample
             else:
                 noise_pred = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
+            def rescale_cfg(cond, uncond, cond_scale, multiplier=.7):
+                # Cond is positive and uncond is negative
+                x_cfg = uncond + cond_scale * (cond - uncond)
+                ro_pos = torch.std(cond, dim=(1,2,3), keepdim=True)
+                ro_cfg = torch.std(x_cfg, dim=(1,2,3), keepdim=True)
+
+                x_rescaled = x_cfg * (ro_pos / ro_cfg)
+                x_final = multiplier * x_rescaled + (1.0 - multiplier) * x_cfg
+
+                return x_final
 
             # perform guidance
             if do_classifier_free_guidance:
                 if negative_scale is None:
                     noise_pred_uncond, noise_pred_text = noise_pred.chunk(num_latent_input)  # uncond by negative prompt
-                    noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+                    #noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+                    noise_pred = rescale_cfg(noise_pred, noise_pred_uncond, guidance_scale)
                 else:
                     noise_pred_negative, noise_pred_text, noise_pred_uncond = noise_pred.chunk(
                         num_latent_input
                     )  # uncond is real uncond
-                    noise_pred = (
-                        noise_pred_uncond
-                        + guidance_scale * (noise_pred_text - noise_pred_uncond)
-                        - negative_scale * (noise_pred_negative - noise_pred_uncond)
-                    )
+
+                    # noise_pred = (
+                    #     noise_pred_uncond
+                    #     + guidance_scale * (noise_pred_text - noise_pred_uncond)
+                    #     - negative_scale * (noise_pred_negative - noise_pred_uncond)
+                    # )
+                    noise_pred = rescale_cfg(noise_pred, noise_pred_uncond, guidance_scale)
 
             # perform clip guidance
             if self.clip_guidance_scale > 0 or self.clip_image_guidance_scale > 0 or self.vgg16_guidance_scale > 0:
