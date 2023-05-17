@@ -5,6 +5,31 @@ import re
 from typing import List, Optional, Union
 
 
+def enforce_zero_terminal_snr(betas):
+    # Convert betas to alphas_bar_sqrt
+    alphas = 1 - betas
+    alphas_bar = alphas.cumprod(0)
+    alphas_bar_sqrt = alphas_bar.sqrt()
+    
+     # Store old values.
+    alphas_bar_sqrt_0 = alphas_bar_sqrt[0].clone()
+    alphas_bar_sqrt_T = alphas_bar_sqrt[-1].clone()
+    # Shift so last timestep is zero.
+    alphas_bar_sqrt -= alphas_bar_sqrt_T
+    # Scale so first timestep is back to old value.
+    alphas_bar_sqrt *= alphas_bar_sqrt_0 / (
+    alphas_bar_sqrt_0 - alphas_bar_sqrt_T)
+     # Convert alphas_bar_sqrt to betas
+    alphas_bar = alphas_bar_sqrt ** 2
+    alphas = alphas_bar[1:] / alphas_bar[:-1]
+    alphas = torch.cat([alphas_bar[0:1], alphas])
+    betas = 1 - alphas
+    return betas
+
+def patch_scheduler_betas(scheduler):
+    scheduler.betas = enforce_zero_terminal_snr(scheduler.betas)
+    return scheduler
+
 def apply_snr_weight(loss, timesteps, noise_scheduler, gamma):
     alphas_cumprod = noise_scheduler.alphas_cumprod
     sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)
