@@ -21,7 +21,7 @@ from library.config_util import (
     BlueprintGenerator,
 )
 import library.custom_train_functions as custom_train_functions
-from library.custom_train_functions import apply_snr_weight, get_weighted_text_embeddings, pyramid_noise_like, apply_noise_offset
+from library.custom_train_functions import apply_snr_weight, get_weighted_text_embeddings, pyramid_noise_like, apply_noise_offset, patch_scheduler_betas
 
 
 def train(args):
@@ -261,7 +261,7 @@ def train(args):
     noise_scheduler = DDPMScheduler(
         beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
     )
-
+    patch_scheduler_betas(noise_scheduler)
     if accelerator.is_main_process:
         accelerator.init_trackers("finetuning" if args.log_tracker_name is None else args.log_tracker_name)
 
