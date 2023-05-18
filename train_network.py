@@ -765,6 +765,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--dim_from_weights",
         action="store_true",
         help="automatically determine dim (rank) from network_weights / dim (rank)をnetwork_weightsで指定した重みから自動で決定する")
+    
     return parser
 
 
