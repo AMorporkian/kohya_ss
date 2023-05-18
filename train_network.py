@@ -523,7 +523,7 @@ def train(args):
     )
     
     patch_scheduler_betas(noise_scheduler)
-    noise
+    
     if accelerator.is_main_process:
         accelerator.init_trackers("network_train" if args.log_tracker_name is None else args.log_tracker_name)
 
