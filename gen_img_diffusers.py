@@ -1054,7 +1054,7 @@ class PipelineLike:
                         + guidance_scale * (noise_pred_text - noise_pred_uncond)
                         - negative_scale * (noise_pred_negative - noise_pred_uncond)
                     )
-                noise_pred = rescale_cfg(cond=noise_pred_text, uncond=noise_pred_uncond, cond_scale=guidance_scale)
+                noise_pred = rescale_cfg(cond=noise_pred, uncond=noise_pred_uncond, cond_scale=guidance_scale)
 
             # perform clip guidance
             if self.clip_guidance_scale > 0 or self.clip_image_guidance_scale > 0 or self.vgg16_guidance_scale > 0:
