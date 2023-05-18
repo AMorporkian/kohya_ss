@@ -16,7 +16,7 @@ from diffusers import SchedulerMixin, StableDiffusionPipeline
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput, StableDiffusionSafetyChecker
 from diffusers.utils import logging
-from custom_train_functions import patch_scheduler_betas
+from .custom_train_functions import patch_scheduler_betas
 
 def rescale_cfg(cond, uncond, cond_scale,multiplier=0.7):
     x_cfg = uncond + cond_scale * (cond - uncond)
