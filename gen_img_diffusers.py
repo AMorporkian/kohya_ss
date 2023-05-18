@@ -3360,9 +3360,7 @@ def setup_parser() -> argparse.ArgumentParser:
         nargs="*",
         help="ControlNet guidance ratio for steps / ControlNetでガイドするステップ比率",
     )
-    parser.add_argument(
-        "--network_module", type=str, default="lycoris.kohya", help="lora network module"
-    )
+    
     
     # parser.add_argument(
     #     "--control_net_image_path", type=str, default=None, nargs="*", help="image for ControlNet guidance / ControlNetでガイドに使う画像"
