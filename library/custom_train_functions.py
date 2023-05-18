@@ -27,7 +27,9 @@ def enforce_zero_terminal_snr(betas):
     return betas
 
 def patch_scheduler_betas(scheduler):
+    print(f"Before patching betas: {scheduler.betas}")
     scheduler.betas = enforce_zero_terminal_snr(scheduler.betas)
+    print(f"After patching betas: {scheduler.betas}")
     return scheduler
 
 def apply_snr_weight(loss, timesteps, noise_scheduler, gamma):
