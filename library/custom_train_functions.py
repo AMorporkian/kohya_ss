@@ -25,7 +25,7 @@ def enforce_zero_terminal_snr(betas):
     alphas = alphas_bar[1:] / alphas_bar[:-1]
     alphas = torch.cat([alphas_bar[0:1], alphas])
     betas = 1 - alphas
-    print(f"betas[-1] after patching: {betas[-1]}"
+    print(f"betas[-1] after patching: {betas[-1]}")
     return betas
 
 def patch_scheduler_betas(scheduler):
