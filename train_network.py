@@ -739,7 +739,7 @@ def setup_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--no_metadata", action="store_true", help="do not save metadata in output model / メタデータを出力先モデルに保存しない")
     parser.add_argument("--v_noise", action="store_true", help="use non-epsilon SNR loss / SNRロスをεを使わないものにする")
-    parser.add_argument("--v_noise_gamma", type=float, default=1.0, "Used to multiply SNR.")
+    parser.add_argument("--v_noise_gamma", type=float, default=1.0, help="Used to multiply SNR.")
     parser.add_argument(
         "--save_model_as",
         type=str,
