@@ -519,7 +519,7 @@ def train(args):
     global_step = 0
 
     noise_scheduler = DDPMScheduler(
-        beta_start=0.00085, beta_end=0.012, beta_schedule="linear", num_train_timesteps=1000, clip_sample=False, prediction_type="v_prediction"
+        beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False, prediction_type="v_prediction"
     )
     
     patch_scheduler_betas(noise_scheduler)
