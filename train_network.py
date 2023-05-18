@@ -10,6 +10,8 @@ import toml
 from multiprocessing import Value
 
 from tqdm import tqdm
+import numpy as np
+
 import torch
 from accelerate.utils import set_seed
 from diffusers import DDPMScheduler
@@ -517,11 +519,11 @@ def train(args):
     global_step = 0
 
     noise_scheduler = DDPMScheduler(
-        beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
+        beta_start=0.00085, beta_end=0.012, beta_schedule="linear", num_train_timesteps=1000, clip_sample=False, prediction_type="v_prediction"
     )
     
     patch_scheduler_betas(noise_scheduler)
-
+    noise
     if accelerator.is_main_process:
         accelerator.init_trackers("network_train" if args.log_tracker_name is None else args.log_tracker_name)
 
@@ -619,8 +621,7 @@ def train(args):
                     target = noise
 
                 loss = torch.nn.functional.mse_loss(noise_pred.float(), target.float(), reduction="none")
-                loss = loss.mean([1, 2, 3])
-
+                loss = loss.mean([1, 2, 3])  # mean over H, W, C
                 loss_weights = batch["loss_weights"]  # 各sampleごとのweight
                 loss = loss * loss_weights
 
