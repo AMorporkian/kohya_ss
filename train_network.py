@@ -617,7 +617,6 @@ def train(args):
                 if args.v_parameterization or args.v_noise:
                     # v-parameterization training
                     target = noise_scheduler.get_velocity(latents, noise, timesteps)
-                    target *= args.v_noise_gamma
                 else:
                     target = noise
 
@@ -625,6 +624,7 @@ def train(args):
                 loss = loss.mean([1, 2, 3])  # mean over H, W, C
                 loss_weights = batch["loss_weights"]  # 各sampleごとのweight
                 loss = loss * loss_weights
+                loss *= args.v_noise_gamma
 
                 if args.min_snr_gamma:
                     loss = apply_snr_weight(loss, timesteps, noise_scheduler, args.min_snr_gamma)
