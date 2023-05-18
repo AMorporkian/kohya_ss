@@ -626,11 +626,11 @@ def train(args):
                 loss = loss * loss_weights
                 loss 
 
-                if args.min_snr_gamma:
-                    loss = apply_snr_weight(loss, timesteps, noise_scheduler, args.min_snr_gamma)
+                if args.v_noise_gamma:
+                    loss = apply_snr_weight(loss, timesteps, noise_scheduler, args.v_noise_gamma)
 
                 loss = loss.mean()  # 平均なのでbatch_sizeで割る必要なし
-                loss = loss * args.v_noise_gamma
+                
                 accelerator.backward(loss)
                 if accelerator.sync_gradients and args.max_grad_norm != 0.0:
                     params_to_clip = network.get_trainable_params()
