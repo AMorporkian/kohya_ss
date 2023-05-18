@@ -745,6 +745,9 @@ def setup_parser() -> argparse.ArgumentParser:
         "--network_module", type=str, default="lycoris.kohya", help="lora network module"
     )
     parser.add_argument(
+        "--network_weights", type=str, default=None, help="lora network module"
+    )
+    parser.add_argument(
         "--network_dim", type=int, default=None, help="network dimensions (depends on each network) / モジュールの次元数（ネットワークにより定義は異なります）"
     )
     parser.add_argument(
