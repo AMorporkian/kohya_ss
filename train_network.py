@@ -741,12 +741,19 @@ def setup_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no_metadata", action="store_true", help="do not save metadata in output model / メタデータを出力先モデルに保存しない")
     parser.add_argument("--v_noise", action="store_true", help="use non-epsilon SNR loss / SNRロスをεを使わないものにする")
     parser.add_argument("--v_noise_gamma", type=float, default=1.0, help="Used to multiply SNR.")
-    parser.add_argument(
-        "--network_module", type=str, default="lycoris.kohya", help="lora network module"
+     parser.add_argument(
+        "--save_model_as",
+        type=str,
+        default="safetensors",
+        choices=[None, "ckpt", "pt", "safetensors"],
+        help="format to save the model (default is .safetensors) / モデル保存時の形式（デフォルトはsafetensors）",
     )
-    parser.add_argument(
-        "--network_weights", type=str, default=None, help="lora network module"
-    )
+
+    parser.add_argument("--unet_lr", type=float, default=None, help="learning rate for U-Net / U-Netの学習率")
+    parser.add_argument("--text_encoder_lr", type=float, default=None, help="learning rate for Text Encoder / Text Encoderの学習率")
+
+    parser.add_argument("--network_weights", type=str, default=None, help="pretrained weights for network / 学習するネットワークの初期重み")
+    parser.add_argument("--network_module", type=str, default=None, help="network module to train / 学習対象のネットワークのモジュール")
     parser.add_argument(
         "--network_dim", type=int, default=None, help="network dimensions (depends on each network) / モジュールの次元数（ネットワークにより定義は異なります）"
     )
@@ -769,8 +776,8 @@ def setup_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dim_from_weights",
         action="store_true",
-        help="automatically determine dim (rank) from network_weights / dim (rank)をnetwork_weightsで指定した重みから自動で決定する")
-    
+        help="automatically determine dim (rank) from network_weights / dim (rank)をnetwork_weightsで指定した重みから自動で決定する",
+    )
     return parser
 
 
