@@ -18,6 +18,16 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput, 
 from diffusers.utils import logging
 
 
+def rescale_cfg(cond, uncond, cond_scale,multiplier=0.7):
+    x_cfg = uncond + cond_scale * (cond - uncond)
+    ro_pos = torch.std(cond, dim=(1,2,3), keepdim=True)
+    ro_cfg = torch.std(x_cfg, dim=(1,2,3), keepdim=True)
+
+    x_rescaled = x_cfg * (ro_pos / ro_cfg)
+    x_final = multiplier * x_rescaled + (1.0 - multiplier) * x_cfg
+    print("Rescaling from {} to {}".format(x_cfg.shape, x_final.shape))
+    return x_final
+
 try:
     from diffusers.utils import PIL_INTERPOLATION
 except ImportError:
@@ -576,7 +586,6 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
         bs_embed, seq_len, _ = text_embeddings.shape
         text_embeddings = text_embeddings.repeat(1, num_images_per_prompt, 1)
         text_embeddings = text_embeddings.view(bs_embed * num_images_per_prompt, seq_len, -1)
-
         if do_classifier_free_guidance:
             bs_embed, seq_len, _ = uncond_embeddings.shape
             uncond_embeddings = uncond_embeddings.repeat(1, num_images_per_prompt, 1)
@@ -857,7 +866,7 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
             # perform guidance
             if do_classifier_free_guidance:
                 noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
-                noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+                noise_pred = rescale_cfg(noise_pred_text, noise_pred_uncond, guidance_scale)
 
             # compute the previous noisy sample x_t -> x_t-1
             latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
