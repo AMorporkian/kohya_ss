@@ -16,7 +16,7 @@ from diffusers import SchedulerMixin, StableDiffusionPipeline
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput, StableDiffusionSafetyChecker
 from diffusers.utils import logging
-
+from custom_train_functions import patch_scheduler_betas
 
 def rescale_cfg(cond, uncond, cond_scale,multiplier=0.7):
     x_cfg = uncond + cond_scale * (cond - uncond)
@@ -484,7 +484,7 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
             text_encoder=text_encoder,
             tokenizer=tokenizer,
             unet=unet,
-            scheduler=scheduler,
+            scheduler=patch_scheduler_betas(scheduler),
             safety_checker=safety_checker,
             feature_extractor=feature_extractor,
             requires_safety_checker=requires_safety_checker,
