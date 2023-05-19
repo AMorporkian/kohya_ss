@@ -268,6 +268,7 @@ def train(args, tuning_mode=False):
         return val_loss
     
     # training loop
+    val_loss = 0
     for epoch in range(num_train_epochs):
         if is_main_process:
             print(f"\nepoch {epoch+1}/{num_train_epochs}")
@@ -283,6 +284,8 @@ def train(args, tuning_mode=False):
         val_loss = validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, noise_scheduler, on_step_start, save_model, remove_model, epoch)
         accelerator.log({"loss/val": val_loss})
         print(val_loss)
+    if tuning_mode:
+        return loss_list[-1], val_loss
         
     # metadata["ss_epoch"] = str(num_train_epochs)
     metadata["ss_training_finished_at"] = str(time.time())
@@ -737,6 +740,9 @@ def log_step(args, accelerator, lr_scheduler, progress_bar, epoch, step, loss):
     if args.logging_dir is not None:
         logs = generate_step_logs(args, current_loss, avr_loss, lr_scheduler)
         accelerator.log(logs, step=global_step)
+        if math.isnan(current_loss):
+            print("Loss is NaN. Stopping training.")
+            exit()
 
 def log_loss(progress_bar, epoch, step, loss):
     global loss_total
