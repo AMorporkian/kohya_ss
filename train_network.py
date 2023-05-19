@@ -266,7 +266,7 @@ def train(args, tuning_mode=False):
             
             accelerator.wait_for_everyone()
         val_loss = sum(val_losses) / len(val_losses)
-        accelerator.log(f"loss/validation: {val_loss}", step=epoch+1)
+        accelerator.log({"loss/validation": val_loss}, step=epoch+1)
         return val_loss
     
     # training loop
