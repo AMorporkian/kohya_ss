@@ -801,6 +801,7 @@ def compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_e
         else:
                         # latentに変換
             print("OK, no latents. We're in VAE encode.")
+            batch["images"].to(accelerator.device)
             print(f"VAE: {vae.device}, batch: {batch['images'].device}")
 
             vae.to(accelerator.device)
