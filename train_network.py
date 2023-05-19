@@ -244,7 +244,7 @@ def train(args, tuning_mode=False):
             print(f"removing old checkpoint: {old_ckpt_file}")
             os.remove(old_ckpt_file)
 
-    def validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch):
+    def validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch):
         # Uses the validation dataset to validate the model
         # Returns the mean validation loss
         val_loss = 0.0
