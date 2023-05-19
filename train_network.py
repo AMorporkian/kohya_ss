@@ -169,7 +169,7 @@ def train(args, tuning_mode=False):
         network.to(weight_dtype)
 
     # acceleratorがなんかよろしくやってくれるらしい
-    text_encoder, unet, network, optimizer, train_dataloader, lr_scheduler, val_dataloader = prepare_subnetworks(text_encoder, unet, network, optimizer, train_dataloader, lr_scheduler, val_dataloader)
+    text_encoder, unet, network, optimizer, train_dataloader, lr_scheduler, val_dataloader = prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder, unet, text_encoder, lr_scheduler, optimizer, train_dataloader, network, val_dataloader)
 
     # 実験的機能：勾配も含めたfp16学習を行う　PyTorchにパッチを当ててfp16でのgrad scaleを有効にする
     if args.full_fp16:
