@@ -20,7 +20,7 @@ sweep_configuration = {
         'num_restarts': {'min': 1, 'max': 10},
         'unet_lr': {'max': 0.005, 'min': 0.00001},
         'text_encoder_lr': {'max': 0.005, 'min': 0.00001},
-        'network_alpha': {[1,8,16,24,32,40,48,56,64,72,80,88,96]},
+        'network_alpha': {'values': [1,8,16,24,32,40,48,56,64,72,80,88,96]},
         'epochs': {'min': 1, 'max': 10},
      }
 }
@@ -153,7 +153,7 @@ def train_one_epoch(batch_size, num_restarts, unet_lr, text_encoder_lr, network_
     a['network_alpha'] = network_alpha
     a['max_train_epochs'] = epochs
 
-    return train_network.train(a)
+    return train_network.train(a, True)
 
 
 def main():
@@ -168,7 +168,7 @@ def main():
     network_alpha = wandb.config.network_alpha
     epochs = wandb.config.epochs
     for epoch in np.arange(1, epochs):
-      train_loss_, val_loss_ = train_one_epoch(epoch)
+      train_loss_, val_loss_ = train_one_epoch(bs, num_restarts, unet_lr, text_encoder_lr, network_alpha, epochs)
 
 
       wandb.log({
@@ -178,5 +178,5 @@ def main():
       })
 
 # Start sweep job.
-wandb.agent(sweep_id, function=main, count=4)
+wandb.agent(sweep_id, function=main, count=32)
 
