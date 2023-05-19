@@ -253,7 +253,7 @@ def train(args, tuning_mode=False):
 
         for batch in val_dataloader:
             val_steps += 1
-            val_loss_list.append(compute_loss_from_latents(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch, batch, val_steps, val_loss_list, val_loss, is_validation=True))
+            val_loss_list.append(compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder,noise_scheduler, batch))
 
         val_loss = sum(val_loss_list) / len(val_loss_list)
         print(f"validation loss: {val_loss}")
