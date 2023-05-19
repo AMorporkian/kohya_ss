@@ -3553,7 +3553,8 @@ class collater_class:
             dataset = worker_info.dataset
         else:
             dataset = self.dataset
-
+        if type(dataset) == torch.utils.data.Subset:
+            dataset = dataset.dataset        
         # set epoch and step
         dataset.set_current_epoch(self.current_epoch.value)
         dataset.set_current_step(self.current_step.value)
