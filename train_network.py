@@ -299,7 +299,7 @@ def train(args, tuning_mode=False):
 
     if is_main_process:
         ckpt_name = train_util.get_last_ckpt_name(args, "." + args.save_model_as)
-        save_model(ckpt_name, network, num_train_epochs, force_sync_upload=True)
+        save_model(ckpt_name, network, num_train_epochs, epoch, force_sync_upload=True)
 
         print("model saved.")
 
