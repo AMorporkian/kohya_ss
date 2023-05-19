@@ -169,7 +169,7 @@ def train(args, tuning_mode=False):
         network.to(weight_dtype)
 
     # acceleratorがなんかよろしくやってくれるらしい
-    text_encoder, unet, network, optimizer, train_dataloader, lr_scheduler = prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder, unet, text_encoder, lr_scheduler, optimizer, train_dataloader, network)
+    text_encoder, unet, network, optimizer, train_dataloader, lr_scheduler = prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder, unet, text_encoder, lr_scheduler, optimizer, train_dataloader, network, val_dataloader)
 
     # 実験的機能：勾配も含めたfp16学習を行う　PyTorchにパッチを当ててfp16でのgrad scaleを有効にする
     if args.full_fp16:
@@ -250,6 +250,7 @@ def train(args, tuning_mode=False):
         val_loss = 0.0
         val_steps = 0
         val_losses = []
+        val_dataloader = accelerator.prepare(val_dataloader)
         for step, batch in enumerate(val_dataloader):
             print(f"validation step: {step}/{len(val_dataloader)}", end="\r")
             current_step.value = global_step
@@ -324,21 +325,21 @@ def log_startup(args, train_dataset_group, train_dataloader, num_train_epochs):
     print(f"  gradient accumulation steps / 勾配を合計するステップ数 = {args.gradient_accumulation_steps}")
     print(f"  total optimization steps / 学習ステップ数: {args.max_train_steps}")
 
-def prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder, unet, text_encoder, lr_scheduler, optimizer, train_dataloader, network ):
+def prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder, unet, text_encoder, lr_scheduler, optimizer, train_dataloader, network, val_dataloader ):
     if train_unet and train_text_encoder:
         unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-            unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler
+            unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler, val_dataloader
         )
     elif train_unet:
         unet, network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-            unet, network, optimizer, train_dataloader, lr_scheduler
+            unet, network, optimizer, train_dataloader, lr_scheduler, val_dataloader
         )
     elif train_text_encoder:
         text_encoder, network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-            text_encoder, network, optimizer, train_dataloader, lr_scheduler
+            text_encoder, network, optimizer, train_dataloader, lr_scheduler, val_dataloader
         )
     else:
-        network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(network, optimizer, train_dataloader, lr_scheduler)
+        network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(network, optimizer, train_dataloader, lr_scheduler, val_dataloader)
 
     # transform DDP after prepare (train_network here only)
     text_encoder, unet, network = train_util.transform_if_model_is_DDP(text_encoder, unet, network)
@@ -749,7 +750,7 @@ def log_loss(progress_bar, loss_list, loss_total, epoch, step, loss):
 
 def log_val_loss(accelerator, loss_list, loss_total, epoch, val_loss):
     if args.logging_dir is not None:
-        logs = {"loss/epoch": loss_total / len(loss_list), "val_loss": val_loss}
+        logs = {"val_loss": val_loss}
         accelerator.log(logs, step=epoch + 1)
 
 
@@ -800,10 +801,6 @@ def compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_e
             latents = batch["latents"].to(accelerator.device)
         else:
                         # latentに変換
-            print("OK, no latents. We're in VAE encode.")
-            batch["images"].to(accelerator.device)
-            print(f"VAE: {vae.device}, batch: {batch['images'].device}")
-
             vae.to(accelerator.device)
             images = batch["images"].to(dtype=weight_dtype)
             latents = vae.encode(images)
