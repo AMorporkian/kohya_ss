@@ -257,7 +257,7 @@ def train(args, tuning_mode=False):
         for step, batch in enumerate(val_dataloader):
             print(f"validation step: {step}/{len(val_dataloader)}", end="\r")
             current_step.value = global_step
-            with accelerator.accumulate(network):
+            with torch.no_grad():
                 on_step_start(text_encoder, unet)
                 loss_t = compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder,noise_scheduler, batch)
                 current_val_loss = loss_t.detach().item()
