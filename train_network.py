@@ -169,7 +169,7 @@ def train(args, tuning_mode=False):
         network.to(weight_dtype)
 
     # acceleratorがなんかよろしくやってくれるらしい
-    text_encoder, unet, network, optimizer, train_dataloader, lr_scheduler = prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder, unet, text_encoder, lr_scheduler, optimizer, train_dataloader, network, val_dataloader)
+    text_encoder, unet, network, optimizer, train_dataloader, lr_scheduler, val_dataloader = prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder, unet, text_encoder, lr_scheduler, optimizer, train_dataloader, network, val_dataloader)
 
     # 実験的機能：勾配も含めたfp16学習を行う　PyTorchにパッチを当ててfp16でのgrad scaleを有効にする
     if args.full_fp16:
@@ -250,7 +250,6 @@ def train(args, tuning_mode=False):
         val_loss = 0.0
         val_steps = 0
         val_losses = []
-        val_dataloader = accelerator.prepare(val_dataloader)
         for step, batch in enumerate(val_dataloader):
             print(f"validation step: {step}/{len(val_dataloader)}", end="\r")
             current_step.value = global_step
@@ -327,19 +326,19 @@ def log_startup(args, train_dataset_group, train_dataloader, num_train_epochs):
 
 def prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder, unet, text_encoder, lr_scheduler, optimizer, train_dataloader, network, val_dataloader ):
     if train_unet and train_text_encoder:
-        unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+        unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler, val_dataloader = accelerator.prepare(
             unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler, val_dataloader
         )
     elif train_unet:
-        unet, network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+        unet, network, optimizer, train_dataloader, lr_scheduler, val_dataloader = accelerator.prepare(
             unet, network, optimizer, train_dataloader, lr_scheduler, val_dataloader
         )
     elif train_text_encoder:
-        text_encoder, network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+        text_encoder, network, optimizer, train_dataloader, lr_scheduler, val_dataloader = accelerator.prepare(
             text_encoder, network, optimizer, train_dataloader, lr_scheduler, val_dataloader
         )
     else:
-        network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(network, optimizer, train_dataloader, lr_scheduler, val_dataloader)
+        network, optimizer, train_dataloader, lr_scheduler, val_dataloader = accelerator.prepare(network, optimizer, train_dataloader, lr_scheduler, val_dataloader)
 
     # transform DDP after prepare (train_network here only)
     text_encoder, unet, network = train_util.transform_if_model_is_DDP(text_encoder, unet, network)
