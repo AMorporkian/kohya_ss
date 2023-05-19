@@ -439,7 +439,7 @@ def generate_dataset_group_by_blueprint(dataset_group_blueprint: DatasetGroupBlu
   return DatasetGroup(datasets)
 
 
-def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: Optional[str] = None, reg_data_dir: Optional[str] = None):
+def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: Optional[str] = None, reg_data_dir: Optional[str] = None, val_split = 0.15):
   def extract_dreambooth_params(name: str) -> Tuple[int, str]:
     tokens = name.split('_')
     try:
@@ -450,7 +450,7 @@ def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: Optional[str] 
     caption_by_folder = '_'.join(tokens[1:])
     return n_repeats, caption_by_folder
 
-  def generate(base_dir: Optional[str], is_reg: bool):
+  def generate(base_dir: Optional[str], is_reg: bool = False, is_val: bool = False):
     if base_dir is None:
       return []
 
@@ -467,7 +467,7 @@ def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: Optional[str] 
       if num_repeats < 1:
         continue
 
-      subset_config = {"image_dir": str(subdir), "num_repeats": num_repeats, "is_reg": is_reg, "class_tokens": class_tokens}
+      subset_config = {"image_dir": str(subdir), "num_repeats": num_repeats, "is_reg": is_reg,  "is_val": is_val, "class_tokens": class_tokens}
       subsets_config.append(subset_config)
 
     return subsets_config
