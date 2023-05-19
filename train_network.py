@@ -251,13 +251,14 @@ def train(args, tuning_mode=False):
         val_steps = 0
         val_loss_list = []
         with accelerator.accumulate(network):    
+            on_step_start(text_encoder, unet)
             for batch in val_dataloader:
                 tqdm.write(f"validation step: {val_steps+1}/{len(val_dataloader)}", end="\r")
                 val_steps += 1
                 val_loss_list.append(compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder,noise_scheduler, batch))
-
+        accelerator.wait_for_everyone()
         val_loss = sum(val_loss_list) / len(val_loss_list)
-        print(f"validation loss: {val_loss}")
+        accelerator.log(f"validation loss: {val_loss}", step=epoch+1)
         return val_loss
     
     # training loop
@@ -277,7 +278,7 @@ def train(args, tuning_mode=False):
 
         print("Computing testing dataset loss...")
         val_loss = validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
-        log_epoch
+        
     # metadata["ss_epoch"] = str(num_train_epochs)
     metadata["ss_training_finished_at"] = str(time.time())
 
@@ -371,7 +372,8 @@ def load_models(args, cache_latents, train_dataset_group, accelerator, weight_dt
 
     # 学習を準備する
     if cache_latents:
-        cache_latents_on_device(args, train_dataset_group, accelerator, weight_dtype, vae)
+        print("Caching latents on device / ラテントをキャッシュしています")
+        #cache_latents_on_device(args, train_dataset_group, accelerator, weight_dtype, vae)
     return text_encoder,vae,unet
 
 def prepare_configuration(args):
