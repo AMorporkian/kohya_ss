@@ -104,7 +104,6 @@ def rescale_cfg(cond, uncond, cond_scale, multiplier=1):
 
     x_rescaled = x_cfg * (ro_pos / ro_cfg)
     x_final = multiplier * x_rescaled + (1.0 - multiplier) * x_cfg
-    print(f"Rescaled {x_cfg.shape} to {x_final.shape}}")
     return x_final
 # Tokenizer: checkpointから読み込むのではなくあらかじめ提供されているものを使う
 TOKENIZER_PATH = "openai/clip-vit-large-patch14"
