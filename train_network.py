@@ -299,11 +299,10 @@ def train(args, tuning_mode=False):
         print("model saved.")
 
 def ready_dataset(args, current_epoch, current_step):
-    cache_latents, use_dreambooth_method, use_user_config, tokenizer, train_dataset_group, val_dataset_group = prepare_configuration(args)
+    cache_latents, use_dreambooth_method, use_user_config, tokenizer, train_dataset_group = prepare_configuration(args)
     ds_for_train_collater = train_dataset_group if args.max_data_loader_n_workers == 0 else None
-    ds_for_val_collater = val_dataset_group if args.max_data_loader_n_workers == 0 else None
     train_collater = train_util.collater_class(current_epoch, current_step, ds_for_train_collater)
-    val_collater = train_util.collater_class(current_epoch, current_step, ds_for_train_collater)
+    val_collater = train_util.collater_class(current_epoch, current_step, None)
     return cache_latents,use_dreambooth_method,use_user_config,tokenizer,train_dataset_group,train_collater,val_collater
 
 def get_epoch_count(args, train_dataloader):
