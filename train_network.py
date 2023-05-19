@@ -21,6 +21,15 @@ from library.train_util import (
     DreamBoothDataset,
 )
 
+
+from torch.utils.data import DataLoader, Subset
+from sklearn.model_selection import train_test_split
+
+VAL_SIZE = 0.1
+BATCH_SIZE = 4
+
+
+
 import sys
 
 sys.path.append(os.path.dirname(__file__))
@@ -127,25 +136,40 @@ def train(args, tuning_mode=False):
     # dataloaderを準備する
     # DataLoaderのプロセス数：0はメインプロセスになる
     n_workers = min(args.max_data_loader_n_workers, os.cpu_count() - 1)  # cpu_count-1 ただし最大で指定された数まで
-    train, val = torch.utils.data.random_split(train_dataset_group, [.85, .15])
-    train_dataloader = torch.utils.data.DataLoader(
-        train,
-        batch_size=1,
-        shuffle=True,
-        collate_fn=train_collater,
-        num_workers=n_workers,
-        persistent_workers=args.persistent_data_loader_workers,
+    # train, val = torch.utils.data.random_split(train_dataset_group, [.85, .15])
+    train_indices, val_indices, _, _ = train_test_split(
+        range(len(train_dataset_group)),
+        train_dataset_group.targets,
+        stratify=train_dataset_group.targets,
+        test_size=VAL_SIZE,
     )
+    train_split = Subset(train_dataset_group, train_indices)
+    val_split = Subset(train_dataset_group, val_indices)
+
+    train_dataloader = torch.utils.data.DataLoader(
+    train_split,
+         batch_size=1,
+         shuffle=True,
+         collate_fn=train_collater,
+         num_workers=n_workers,
+         persistent_workers=args.persistent_data_loader_workers,
+     )
 
     val_dataloader = torch.utils.data.DataLoader(
-        val,
-        batch_size=1,
-        shuffle=False,
-        collate_fn=val_collater,
-        num_workers=n_workers,
-        persistent_workers=args.persistent_data_loader_workers,
+         val_split,
+         batch_size=1,
+         shuffle=False,
+         collate_fn=train_collater,
+         num_workers=n_workers,
+         persistent_workers=args.persistent_data_loader_workers,
     )
 
+    print(f"Length of train dataset: {len(train_dataloader)}") 
+    print(f"Length of val dataset: {len(val_dataloader)}")
+    print(f"Sum of train and val dataset: {len(train_dataloader) + len(val_dataloader)}")
+    # generate indices: instead of the actual data we pass in integers instead
+
+# generate subset based on indices
     # 学習ステップ数を計算する
     if args.max_train_epochs is not None:
         args.max_train_steps = args.max_train_epochs * math.ceil(
@@ -320,7 +344,7 @@ def log_startup(args, train_dataset_group, train_dataloader, num_train_epochs):
     print(f"  num batches per epoch / 1epochのバッチ数: {len(train_dataloader)}")
     print(f"  num epochs / epoch数: {num_train_epochs}")
     print(f"  batch size per device / バッチサイズ: {', '.join([str(d.batch_size) for d in train_dataset_group.datasets])}")
-        # print(f"  total train batch size (with parallel & distributed & accumulation) / 総バッチサイズ（並列学習、勾配合計含む）: {total_batch_size}")
+    #print(f"  total train batch size (with parallel & distributed & accumulation) / 総バッチサイズ（並列学習、勾配合計含む）: {total_batch_size}")
     print(f"  gradient accumulation steps / 勾配を合計するステップ数 = {args.gradient_accumulation_steps}")
     print(f"  total optimization steps / 学習ステップ数: {args.max_train_steps}")
 
