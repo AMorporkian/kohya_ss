@@ -169,7 +169,7 @@ def train(args, tuning_mode=False):
         network.to(weight_dtype)
 
     # acceleratorがなんかよろしくやってくれるらしい
-    text_encoder, unet, network, optimizer, train_dataloader, lr_scheduler = prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder)
+    text_encoder, unet, network, optimizer, train_dataloader, lr_scheduler = prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder, unet)
 
     # 実験的機能：勾配も含めたfp16学習を行う　PyTorchにパッチを当ててfp16でのgrad scaleを有効にする
     if args.full_fp16:
@@ -323,7 +323,7 @@ def log_startup(args, train_dataset_group, train_dataloader, num_train_epochs):
     print(f"  gradient accumulation steps / 勾配を合計するステップ数 = {args.gradient_accumulation_steps}")
     print(f"  total optimization steps / 学習ステップ数: {args.max_train_steps}")
 
-def prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder):
+def prepare_subnetworks(args, cache_latents, accelerator, weight_dtype, vae, train_unet, train_text_encoder, unet):
     if train_unet and train_text_encoder:
         unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
             unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler
