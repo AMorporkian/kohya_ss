@@ -270,7 +270,6 @@ def train(args, tuning_mode=False):
         if is_main_process:
             print(f"\nepoch {epoch+1}/{num_train_epochs}")
         train_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
-        validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
         log_epoch(args, accelerator, loss_list, loss_total, epoch)
         # 指定エポックごとにモデルを保存
         if args.save_every_n_epochs is not None:
@@ -279,9 +278,7 @@ def train(args, tuning_mode=False):
                 save_network(args, accelerator, unwrap_model, network, global_step, save_model, remove_model, epoch)
 
         train_util.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizer, text_encoder, unet)
-
-        print("Computing testing dataset loss...")
-        val_loss = validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
+        validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
         
     # metadata["ss_epoch"] = str(num_train_epochs)
     metadata["ss_training_finished_at"] = str(time.time())
@@ -799,9 +796,12 @@ def do_step(args, tokenizer, current_step, accelerator, weight_dtype, text_encod
 def compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder, noise_scheduler, batch) -> torch.Tensor:
     with torch.no_grad():
         if "latents" in batch and batch["latents"] is not None:
+            print("We're in the latent section!")
             latents = batch["latents"].to(accelerator.device)
         else:
                         # latentに変換
+            print("OK, no latents. We're in VAE encode.")
+            vae.to(accelerator.device)
             latents = vae.encode(batch["images"].to(dtype=weight_dtype)).latent_dist.sample()
         latents = latents * 0.18215
     b_size = latents.shape[0]
@@ -929,5 +929,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     args = train_util.read_config_from_file(args, parser)
-
+    print(args)
     train(args)
