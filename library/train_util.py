@@ -593,7 +593,7 @@ class BaseDataset(torch.utils.data.Dataset):
             input_ids = torch.stack(iids_list)  # 3,77
         return input_ids
 
-    def register_image(self, info: ImageInfo, subset: BaseSubset, is_val: bool = False):
+    def register_image(self, info: ImageInfo, subset: BaseSubset):
         self.image_data[info.image_key] = info
         self.image_to_subset[info.image_key] = subset
 
