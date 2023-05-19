@@ -249,16 +249,18 @@ def train(args, tuning_mode=False):
         # Returns the mean validation loss
         val_loss = 0.0
         val_steps = 0
-        val_losses = torch.nn.ModuleList()
-        with accelerator.accumulate(network):    
-            on_step_start(text_encoder, unet)
-            for batch in val_dataloader:
-                tqdm.write(f"validation step: {val_steps+1}/{len(val_dataloader)}", end="\r")
-                val_steps += 1
-                val_losses.append(compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder,noise_scheduler, batch))
+        val_losses = []
+        for batch in val_dataloader:
+            tqdm.write(f"validation step: {val_steps+1}/{len(val_dataloader)}", end="\r")
+            val_steps += 1
+            loss_t = compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder,noise_scheduler, batch)
+            current_val_loss = loss_t.detach().item()
+            val_losses.append(current_val_loss)
+            val_loss += current_val_loss
+                
         accelerator.wait_for_everyone()
         val_loss = sum(val_losses) / len(val_losses)
-        accelerator.log(f"validation loss: {val_loss}", step=epoch+1)
+        accelerator.log(f"loss/validation: {val_loss}", step=epoch+1)
         return val_loss
     
     # training loop
@@ -746,6 +748,12 @@ def log_loss(progress_bar, loss_list, loss_total, epoch, step, loss):
     progress_bar.set_postfix(**logs)
     return current_loss,avr_loss
 
+def log_val_loss(accelerator, loss_list, loss_total, epoch, val_loss):
+    if args.logging_dir is not None:
+        logs = {"loss/epoch": loss_total / len(loss_list), "val_loss": val_loss}
+        accelerator.log(logs, step=epoch + 1)
+
+
 def update_housekeeping(args, tokenizer, accelerator, unwrap_model, text_encoder, vae, unet, network, progress_bar, global_step, save_model, remove_model, epoch):
     progress_bar.update(1)
     global_step += 1
@@ -786,7 +794,7 @@ def do_step(args, tokenizer, current_step, accelerator, weight_dtype, text_encod
         optimizer.zero_grad(set_to_none=True)
     return loss
 
-def compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder, noise_scheduler, batch):
+def compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder, noise_scheduler, batch) -> torch.Tensor:
     with torch.no_grad():
         if "latents" in batch and batch["latents"] is not None:
             latents = batch["latents"].to(accelerator.device)
@@ -821,7 +829,7 @@ def compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_e
     loss = calculate_loss(args, noise_scheduler, batch, timesteps, noise_pred, target)
     return loss
 
-def calculate_loss(args, noise_scheduler, batch, timesteps, noise_pred, target):
+def calculate_loss(args, noise_scheduler, batch, timesteps, noise_pred, target) -> torch.Tensor:
     loss = torch.nn.functional.mse_loss(noise_pred.float(), target.float(), reduction="none")
     loss = loss.mean([1, 2, 3])  # mean over H, W, C
     loss_weights = batch["loss_weights"]  # 各sampleごとのweight
