@@ -249,15 +249,15 @@ def train(args, tuning_mode=False):
         # Returns the mean validation loss
         val_loss = 0.0
         val_steps = 0
-        val_loss_list = []
+        val_losses = torch.nn.ModuleList()
         with accelerator.accumulate(network):    
             on_step_start(text_encoder, unet)
             for batch in val_dataloader:
                 tqdm.write(f"validation step: {val_steps+1}/{len(val_dataloader)}", end="\r")
                 val_steps += 1
-                val_loss_list.append(compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder,noise_scheduler, batch))
+                val_losses.append(compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder,noise_scheduler, batch))
         accelerator.wait_for_everyone()
-        val_loss = sum(val_loss_list) / len(val_loss_list)
+        val_loss = sum(val_losses) / len(val_losses)
         accelerator.log(f"validation loss: {val_loss}", step=epoch+1)
         return val_loss
     
