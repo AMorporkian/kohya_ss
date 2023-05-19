@@ -20,7 +20,7 @@ import library.train_util as train_util
 from library.train_util import (
     DreamBoothDataset,
 )
-
+global_step = 0
 
 
 import sys
@@ -211,7 +211,7 @@ def train(args, tuning_mode=False):
     minimum_metadata = generate_minimum_metadata(metadata)
 
     progress_bar = tqdm(range(args.max_train_steps), smoothing=0, disable=not accelerator.is_local_main_process, desc="steps")
-    global_step = 0
+    
 
     noise_scheduler = get_default_noise_scheduler() # Gives you a DDPM noise scheduler with diffusion settings
     
@@ -248,7 +248,7 @@ def train(args, tuning_mode=False):
             print(f"removing old checkpoint: {old_ckpt_file}")
             os.remove(old_ckpt_file)
 
-    def validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch):
+    def validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch):
         # Uses the validation dataset to validate the model
         # Returns the mean validation loss
         val_loss = 0.0
@@ -273,16 +273,16 @@ def train(args, tuning_mode=False):
     for epoch in range(num_train_epochs):
         if is_main_process:
             print(f"\nepoch {epoch+1}/{num_train_epochs}")
-        train_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
+        train_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, metadata, progress_bar, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
         log_epoch(args, accelerator, loss_list, loss_total, epoch)
         # 指定エポックごとにモデルを保存
         if args.save_every_n_epochs is not None:
             saving = (epoch + 1) % args.save_every_n_epochs == 0 and (epoch + 1) < num_train_epochs
             if is_main_process and saving:
-                save_network(args, accelerator, unwrap_model, network, global_step, save_model, remove_model, epoch)
+                save_network(args, accelerator, unwrap_model, network, save_model, remove_model, epoch)
 
-        train_util.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizer, text_encoder, unet)
-        validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
+        train_util.sample_images(accelerator, args, epoch + 1, accelerator.device, vae, tokenizer, text_encoder, unet)
+        validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
         
     # metadata["ss_epoch"] = str(num_train_epochs)
     metadata["ss_training_finished_at"] = str(time.time())
@@ -299,7 +299,7 @@ def train(args, tuning_mode=False):
 
     if is_main_process:
         ckpt_name = train_util.get_last_ckpt_name(args, "." + args.save_model_as)
-        save_model(ckpt_name, network, global_step, num_train_epochs, force_sync_upload=True)
+        save_model(ckpt_name, network, num_train_epochs, force_sync_upload=True)
 
         print("model saved.")
 
@@ -619,34 +619,34 @@ def create_metadata(args, session_id, training_started_at, use_dreambooth_method
         
     return metadata
 
-def train_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch):
+def train_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, metadata, progress_bar, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch):
     current_epoch.value = epoch + 1
 
     metadata["ss_epoch"] = str(epoch + 1)
 
     network.on_epoch_start(text_encoder, unet)
 
-    train_on_data(args, tokenizer, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
+    train_on_data(args, tokenizer, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, progress_bar, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
 
     accelerator.wait_for_everyone()
 
-def train_on_data(args, tokenizer, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch, validate=True):
+def train_on_data(args, tokenizer, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, progress_bar, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch, validate=True):
     for step, batch in enumerate(train_dataloader):
-        loss = do_step(args, tokenizer, current_step, accelerator, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, lr_scheduler, global_step, noise_scheduler, on_step_start, batch)
+        loss = do_step(args, tokenizer, current_step, accelerator, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, lr_scheduler, noise_scheduler, on_step_start, batch)
 
             # Checks if the accelerator has performed an optimization step behind the scenes
         if accelerator.sync_gradients:
-            update_housekeeping(args, tokenizer, accelerator, unwrap_model, text_encoder, vae, unet, network, progress_bar, global_step, save_model, remove_model, epoch)
+            update_housekeeping(args, tokenizer, accelerator, unwrap_model, text_encoder, vae, unet, network, progress_bar, save_model, remove_model, epoch)
 
-        log_step(args, accelerator, lr_scheduler, progress_bar, global_step, loss_list, loss_total, epoch, step, loss)
+        log_step(args, accelerator, lr_scheduler, progress_bar, loss_list, loss_total, epoch, step, loss)
 
 
         if global_step >= args.max_train_steps:
             break
 
-def save_network(args, accelerator, unwrap_model, network, global_step, save_model, remove_model, epoch):
+def save_network(args, accelerator, unwrap_model, network, save_model, remove_model, epoch):
     ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, epoch + 1)
-    save_model(ckpt_name, unwrap_model(network), global_step, epoch + 1)
+    save_model(ckpt_name, unwrap_model(network), epoch + 1)
 
     remove_epoch_no = train_util.get_remove_epoch_no(args, epoch + 1)
     if remove_epoch_no is not None:
@@ -731,7 +731,7 @@ def log_epoch(args, accelerator, loss_list, loss_total, epoch):
         logs = {"loss/epoch": loss_total / len(loss_list)}
         accelerator.log(logs, step=epoch + 1)
 
-def log_step(args, accelerator, lr_scheduler, progress_bar, global_step, loss_list, loss_total, epoch, step, loss):
+def log_step(args, accelerator, lr_scheduler, progress_bar, loss_list, loss_total, epoch, step, loss):
     current_loss, avr_loss = log_loss(progress_bar, loss_list, loss_total, epoch, step, loss)
 
     if args.logging_dir is not None:
@@ -757,7 +757,8 @@ def log_val_loss(accelerator, loss_list, loss_total, epoch, val_loss):
         accelerator.log(logs, step=epoch + 1)
 
 
-def update_housekeeping(args, tokenizer, accelerator, unwrap_model, text_encoder, vae, unet, network, progress_bar, global_step, save_model, remove_model, epoch):
+def update_housekeeping(args, tokenizer, accelerator, unwrap_model, text_encoder, vae, unet, network, progress_bar, save_model, remove_model, epoch):
+    global global_step
     progress_bar.update(1)
     global_step += 1
     print(f"Global step: {global_step} Epoch: {epoch}")
@@ -780,7 +781,7 @@ def update_housekeeping(args, tokenizer, accelerator, unwrap_model, text_encoder
                 remove_ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no)
                 remove_model(remove_ckpt_name)
 
-def do_step(args, tokenizer, current_step, accelerator, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, lr_scheduler, global_step, noise_scheduler, on_step_start, batch):
+def do_step(args, tokenizer, current_step, accelerator, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, lr_scheduler, noise_scheduler, on_step_start, batch):
     current_step.value = global_step
     with accelerator.accumulate(network):
         on_step_start(text_encoder, unet)
