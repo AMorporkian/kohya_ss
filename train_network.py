@@ -250,11 +250,11 @@ def train(args, tuning_mode=False):
         val_loss = 0.0
         val_steps = 0
         val_loss_list = []
-
-        for batch in val_dataloader:
-            tqdm.write(f"validation step: {val_steps+1}/{len(val_dataloader)}", end="\r")
-            val_steps += 1
-            val_loss_list.append(compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder,noise_scheduler, batch))
+        with accelerator.accumulate(network):    
+            for batch in val_dataloader:
+                tqdm.write(f"validation step: {val_steps+1}/{len(val_dataloader)}", end="\r")
+                val_steps += 1
+                val_loss_list.append(compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder,noise_scheduler, batch))
 
         val_loss = sum(val_loss_list) / len(val_loss_list)
         print(f"validation loss: {val_loss}")
