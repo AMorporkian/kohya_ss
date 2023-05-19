@@ -37,7 +37,6 @@ from torchvision import transforms
 from transformers import CLIPTokenizer
 import transformers
 import diffusers
-from sklearn.model_selection import train_test_split
 from diffusers.optimization import SchedulerType, TYPE_TO_SCHEDULER_FUNCTION
 from diffusers import (
     StableDiffusionPipeline,
@@ -1126,8 +1125,6 @@ class DreamBoothDataset(BaseDataset):
             if subset.is_reg:
                 num_reg_images += subset.num_repeats * len(img_paths)
             else:
-                subset, val_subset = self.split_train_val(subset)
-
                 num_train_images += subset.num_repeats * (len(img_paths) - subset.num_val_images)
 
             for img_path, caption in zip(img_paths, captions):
