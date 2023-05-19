@@ -40,7 +40,7 @@ from library.custom_train_functions import apply_snr_weight, get_weighted_text_e
 
 # TODO 他のスクリプトと共通化する
 def generate_step_logs(args: argparse.Namespace, current_loss, avr_loss, lr_scheduler):
-    logs = {"loss/current": current_loss, "loss/average": avr_loss}
+    logs = {"loss/current": current_loss, "loss/average": avr_loss, "loss/val": None}
 
     lrs = lr_scheduler.get_last_lr()
 
@@ -265,7 +265,6 @@ def train(args, tuning_mode=False):
             
             accelerator.wait_for_everyone()
         val_loss = sum(val_losses) / len(val_losses)
-        accelerator.log({"loss/validation": val_loss}, step=epoch+1)
         return val_loss
     
     # training loop
@@ -282,7 +281,8 @@ def train(args, tuning_mode=False):
 
         train_util.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizer, text_encoder, unet)
         val_loss = validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, noise_scheduler, on_step_start, save_model, remove_model, epoch)
-        log_val_loss(args, accelerator, epoch, val_loss)
+        accelerator.log({"loss/val": val_loss})
+        print(val_loss)
         
     # metadata["ss_epoch"] = str(num_train_epochs)
     metadata["ss_training_finished_at"] = str(time.time())
@@ -753,9 +753,8 @@ def log_loss(progress_bar, epoch, step, loss):
     return current_loss,avr_loss
 
 def log_val_loss(args, accelerator, epoch, val_loss):
-    if args.logging_dir is not None:
-        logs = {"val_loss": val_loss}
-        accelerator.log(logs, step=epoch + 1)
+    logs = {"loss/val": val_loss}
+    accelerator.log(logs, step=epoch + 1)
 
 
 def update_housekeeping(args, tokenizer, accelerator, unwrap_model, text_encoder, vae, unet, network, progress_bar, save_model, remove_model, epoch):

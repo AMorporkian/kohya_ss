@@ -6,7 +6,6 @@ from typing import List, Optional, Union
 
 
 def enforce_zero_terminal_snr(betas):
-    print(f"betas[-1] before patching: {betas[-1]}")
     # Convert betas to alphas_bar_sqrt
     alphas = 1 - betas
     alphas_bar = alphas.cumprod(0)
@@ -25,13 +24,10 @@ def enforce_zero_terminal_snr(betas):
     alphas = alphas_bar[1:] / alphas_bar[:-1]
     alphas = torch.cat([alphas_bar[0:1], alphas])
     betas = 1 - alphas
-    print(f"betas[-1] after patching: {betas[-1]}")
     return betas
 
 def patch_scheduler_betas(scheduler):
-    print(f"Before patching betas: {scheduler.betas}")
     scheduler.betas = enforce_zero_terminal_snr(scheduler.betas)
-    print(f"After patching betas: {scheduler.betas}")
     return scheduler
 
 def apply_snr_weight(loss, timesteps, noise_scheduler, gamma):

@@ -25,7 +25,6 @@ def rescale_cfg(cond, uncond, cond_scale,multiplier=0.7):
 
     x_rescaled = x_cfg  * (ro_pos / ro_cfg)
     x_final = multiplier * x_rescaled + (1.0 - multiplier) * x_cfg
-    print(f"Rescale magnitude: {torch.mean(ro_pos / ro_cfg):.3f}")
     return x_final
 
 try:
