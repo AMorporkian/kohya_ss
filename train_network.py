@@ -722,9 +722,9 @@ def choose_training_method(args, use_dreambooth_method):
         
     return user_config
 
-def log_epoch(args, accelerator, loss_list, loss_total, epoch, val_loss):
+def log_epoch(args, accelerator, loss_list, loss_total, epoch):
     if args.logging_dir is not None:
-        logs = {"loss/epoch": loss_total / len(loss_list), "val_loss": val_loss}
+        logs = {"loss/epoch": loss_total / len(loss_list)}
         accelerator.log(logs, step=epoch + 1)
 
 def log_step(args, accelerator, lr_scheduler, progress_bar, global_step, loss_list, loss_total, epoch, step, loss, val_loss=None):
