@@ -327,7 +327,6 @@ class DreamBoothSubset(BaseSubset):
         caption_tag_dropout_rate,
         token_warmup_min,
         token_warmup_step,
-        val_ratio=.15
     ) -> None:
         assert image_dir is not None, "image_dir must be specified / image_dirは指定が必須です"
 
@@ -346,7 +345,7 @@ class DreamBoothSubset(BaseSubset):
             token_warmup_min,
             token_warmup_step,
         )
-        self.val_ratio = val_ratio
+        
         self.is_reg = is_reg
         self.class_tokens = class_tokens
         self.caption_extension = caption_extension
@@ -447,7 +446,7 @@ class BaseDataset(torch.utils.data.Dataset):
 
         self.image_data: Dict[str, ImageInfo] = {}
         self.image_to_subset: Dict[str, Union[DreamBoothSubset, FineTuningSubset]] = {}
-        self.val_indices: List[int] = []
+        
 
         self.replacements = {}
 
@@ -630,7 +629,7 @@ class BaseDataset(torch.utils.data.Dataset):
                     )
 
             img_ar_errors = []
-            for image_info in self.image_data.values() + self.val_image_data.values():
+            for image_info in self.image_data.values():
                 image_width, image_height = image_info.image_size
                 image_info.bucket_reso, image_info.resized_size, ar_error = self.bucket_manager.select_bucket(
                     image_width, image_height
@@ -1101,9 +1100,9 @@ class DreamBoothDataset(BaseDataset):
         print("prepare images.")
         num_train_images = 0
         num_reg_images = 0
-        num_val_images = 0
+        
         reg_infos: List[ImageInfo] = []
-        val_infos: List[ImageInfo] = []
+        
         for subset in subsets:
             if subset.num_repeats < 1:
                 print(
@@ -1125,7 +1124,7 @@ class DreamBoothDataset(BaseDataset):
             if subset.is_reg:
                 num_reg_images += subset.num_repeats * len(img_paths)
             else:
-                num_train_images += subset.num_repeats * (len(img_paths) - subset.num_val_images)
+                num_train_images += subset.num_repeats * (len(img_paths))
 
             for img_path, caption in zip(img_paths, captions):
                 info = ImageInfo(img_path, subset.num_repeats, caption, subset.is_reg, img_path)
@@ -1139,7 +1138,7 @@ class DreamBoothDataset(BaseDataset):
 
         print(f"{num_train_images} train images with repeating.")
         self.num_train_images = num_train_images
-        self.num_val_images = num_val_images
+        
 
         print(f"{num_reg_images} reg images.")
         if num_train_images < num_reg_images:
@@ -1379,7 +1378,7 @@ class DatasetGroup(torch.utils.data.ConcatDataset):
         self.image_data = {}
         self.num_train_images = 0
         self.num_reg_images = 0
-        self.num_val_images = 0
+        
         self.validation = True
 
         # simply concat together
