@@ -282,7 +282,7 @@ def train(args, tuning_mode=False):
 
         train_util.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizer, text_encoder, unet)
         val_loss = validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, noise_scheduler, on_step_start, save_model, remove_model, epoch)
-        log_val_loss(args, accelerator, val_loss, epoch)
+        log_val_loss(args, accelerator, epoch, val_loss)
         
     # metadata["ss_epoch"] = str(num_train_epochs)
     metadata["ss_training_finished_at"] = str(time.time())
