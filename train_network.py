@@ -801,8 +801,12 @@ def compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_e
         else:
                         # latentに変換
             print("OK, no latents. We're in VAE encode.")
+            print(f"VAE: {vae.device}, batch: {batch['images'].device}")
+
             vae.to(accelerator.device)
-            latents = vae.encode(batch["images"].to(dtype=weight_dtype)).latent_dist.sample()
+            images = batch["images"].to(dtype=weight_dtype)
+            latents = vae.encode(images)
+            latents = latents.latent_dist.sample()
         latents = latents * 0.18215
     b_size = latents.shape[0]
 
