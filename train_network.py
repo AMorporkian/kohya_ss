@@ -281,7 +281,7 @@ def train(args, tuning_mode=False):
             if is_main_process and saving:
                 save_network(args, accelerator, unwrap_model, network, save_model, remove_model, epoch)
 
-        train_util.sample_images(accelerator, args, epoch + 1, accelerator.device, vae, tokenizer, text_encoder, unet)
+        train_util.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizer, text_encoder, unet)
         validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
         
     # metadata["ss_epoch"] = str(num_train_epochs)
@@ -761,7 +761,6 @@ def update_housekeeping(args, tokenizer, accelerator, unwrap_model, text_encoder
     global global_step
     progress_bar.update(1)
     global_step += 1
-    print(f"Global step: {global_step} Epoch: {epoch}")
     train_util.sample_images(
                     accelerator, args, None, global_step, accelerator.device, vae, tokenizer, text_encoder, unet
                 )
