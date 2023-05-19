@@ -731,7 +731,7 @@ def log_epoch(args, accelerator, loss_list, loss_total, epoch):
         logs = {"loss/epoch": loss_total / len(loss_list)}
         accelerator.log(logs, step=epoch + 1)
 
-def log_step(args, accelerator, lr_scheduler, progress_bar, global_step, loss_list, loss_total, epoch, step, loss, val_loss=None):
+def log_step(args, accelerator, lr_scheduler, progress_bar, global_step, loss_list, loss_total, epoch, step, loss):
     current_loss, avr_loss = log_loss(progress_bar, loss_list, loss_total, epoch, step, loss)
 
     if args.logging_dir is not None:
@@ -760,7 +760,7 @@ def log_val_loss(accelerator, loss_list, loss_total, epoch, val_loss):
 def update_housekeeping(args, tokenizer, accelerator, unwrap_model, text_encoder, vae, unet, network, progress_bar, global_step, save_model, remove_model, epoch):
     progress_bar.update(1)
     global_step += 1
-
+    print(f"Global step: {global_step} Epoch: {epoch}")
     train_util.sample_images(
                     accelerator, args, None, global_step, accelerator.device, vae, tokenizer, text_encoder, unet
                 )
