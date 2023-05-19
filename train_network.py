@@ -10,7 +10,6 @@ import toml
 from multiprocessing import Value
 
 from tqdm import tqdm
-import torch
 import numpy as np
 
 import torch
@@ -778,6 +777,7 @@ def setup_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="automatically determine dim (rank) from network_weights / dim (rank)をnetwork_weightsで指定した重みから自動で決定する",
     )
+
     return parser
 
 

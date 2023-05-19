@@ -63,7 +63,7 @@ import safetensors.torch
 from library.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
 import library.model_util as model_util
 import library.huggingface_util as huggingface_util
-
+from .custom_train_functions import patch_scheduler_betas
 
 # Tokenizer: checkpointから読み込むのではなくあらかじめ提供されているものを使う
 TOKENIZER_PATH = "openai/clip-vit-large-patch14"
@@ -3358,7 +3358,7 @@ def sample_images(
         beta_schedule=SCHEDLER_SCHEDULE,
         **sched_init_args,
     )
-
+    patch_scheduler_betas(scheduler)
 
     # clip_sample=Trueにする
     if hasattr(scheduler.config, "clip_sample") and scheduler.config.clip_sample is False:

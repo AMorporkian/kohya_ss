@@ -23,7 +23,7 @@ def rescale_cfg(cond, uncond, cond_scale,multiplier=0.7):
     ro_pos = torch.std(cond, dim=(1,2,3), keepdim=True)
     ro_cfg = torch.std(x_cfg, dim=(1,2,3), keepdim=True)
 
-    x_rescaled = x_cfg * (ro_pos / ro_cfg)
+    x_rescaled = x_cfg  * (ro_pos / ro_cfg)
     x_final = multiplier * x_rescaled + (1.0 - multiplier) * x_cfg
     print(f"Rescale magnitude: {torch.mean(ro_pos / ro_cfg):.3f}")
     return x_final
@@ -484,7 +484,7 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
             text_encoder=text_encoder,
             tokenizer=tokenizer,
             unet=unet,
-            scheduler=patch_scheduler_betas(scheduler),
+            scheduler=scheduler,
             safety_checker=safety_checker,
             feature_extractor=feature_extractor,
             requires_safety_checker=requires_safety_checker,
