@@ -36,8 +36,8 @@ from library.custom_train_functions import apply_snr_weight, get_weighted_text_e
 
 
 # TODO 他のスクリプトと共通化する
-def generate_step_logs(args: argparse.Namespace, current_loss, avr_loss, lr_scheduler, val_loss):
-    logs = {"loss/current": current_loss, "loss/average": avr_loss, "loss/validation": val_loss}
+def generate_step_logs(args: argparse.Namespace, current_loss, avr_loss, lr_scheduler):
+    logs = {"loss/current": current_loss, "loss/average": avr_loss}
 
     lrs = lr_scheduler.get_last_lr()
 
@@ -252,6 +252,7 @@ def train(args, tuning_mode=False):
         val_loss_list = []
 
         for batch in val_dataloader:
+            tqdm.write(f"validation step: {val_steps+1}/{len(val_dataloader)}", end="\r")
             val_steps += 1
             val_loss_list.append(compute_loss_from_latents(args, tokenizer, accelerator, weight_dtype, text_encoder, vae, unet, train_text_encoder,noise_scheduler, batch))
 
@@ -259,14 +260,13 @@ def train(args, tuning_mode=False):
         print(f"validation loss: {val_loss}")
         return val_loss
     
-        # validation loop
-            
     # training loop
     for epoch in range(num_train_epochs):
         if is_main_process:
             print(f"\nepoch {epoch+1}/{num_train_epochs}")
         train_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
         validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
+        log_epoch(args, accelerator, loss_list, loss_total, epoch)
         # 指定エポックごとにモデルを保存
         if args.save_every_n_epochs is not None:
             saving = (epoch + 1) % args.save_every_n_epochs == 0 and (epoch + 1) < num_train_epochs
@@ -275,10 +275,9 @@ def train(args, tuning_mode=False):
 
         train_util.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizer, text_encoder, unet)
 
-        # end of epoch
         print("Computing testing dataset loss...")
         val_loss = validate_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, val_dataloader, lr_scheduler, metadata, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
-        generate_step_logs
+        log_epoch
     # metadata["ss_epoch"] = str(num_train_epochs)
     metadata["ss_training_finished_at"] = str(time.time())
 
@@ -622,8 +621,6 @@ def train_epoch(args, tokenizer, current_epoch, current_step, accelerator, unwra
 
     train_on_data(args, tokenizer, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch)
 
-    log_epoch(args, accelerator, loss_list, loss_total, epoch)
-
     accelerator.wait_for_everyone()
 
 def train_on_data(args, tokenizer, current_step, accelerator, unwrap_model, weight_dtype, text_encoder, vae, unet, network, train_text_encoder, optimizer, train_dataloader, lr_scheduler, progress_bar, global_step, noise_scheduler, loss_list, loss_total, on_step_start, save_model, remove_model, epoch, validate=True):
@@ -722,12 +719,12 @@ def choose_training_method(args, use_dreambooth_method):
         
     return user_config
 
-def log_epoch(args, accelerator, loss_list, loss_total, epoch):
+def log_epoch(args, accelerator, loss_list, loss_total, epoch, val_loss):
     if args.logging_dir is not None:
-        logs = {"loss/epoch": loss_total / len(loss_list)}
+        logs = {"loss/epoch": loss_total / len(loss_list), "val_loss": val_loss}
         accelerator.log(logs, step=epoch + 1)
 
-def log_step(args, accelerator, lr_scheduler, progress_bar, global_step, loss_list, loss_total, epoch, step, loss):
+def log_step(args, accelerator, lr_scheduler, progress_bar, global_step, loss_list, loss_total, epoch, step, loss, val_loss=None):
     current_loss, avr_loss = log_loss(progress_bar, loss_list, loss_total, epoch, step, loss)
 
     if args.logging_dir is not None:
