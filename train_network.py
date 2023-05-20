@@ -743,7 +743,8 @@ def log_step(args, accelerator, lr_scheduler, progress_bar, epoch, step, loss):
         logs = generate_step_logs(args, current_loss, avr_loss, lr_scheduler)
         accelerator.log(logs, step=global_step)
         if math.isnan(current_loss):
-            print("Loss is NaN. Stopping training.")
+            print("Loss is NaN. Stopping training. Setting all losses to infinite for hyperparameter tuning purposes.")
+            accelerator.log({'loss/current': np.inf, 'loss/val': np.inf})
             exit()
 
 def log_loss(progress_bar, epoch, step, loss):
