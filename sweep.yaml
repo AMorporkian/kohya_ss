@@ -1,0 +1,86 @@
+command:
+  - ${env}
+  - ${interpreter}
+  - /workspace/src/kohya_ss/train_network.py
+  - --pretrained_model_name_or_path
+  - /workspace/src/kohya_ss/anyloraCheckpoint_novaeFp16.ckpt
+  - --vae
+  - /workspace/automatic/models/VAE/kl-f8-anime2.ckpt
+  - --sample_every_n_epochs
+  - 1
+  - --train_data_dir
+  - /workspace/datasets/harmony_splatoon/img
+  - --output_dir
+  - /workspace/datasets/harmony_splatoon/out1
+  - --xformers
+  - --mixed_precision
+  - bf16
+  - --clip_skip
+  - 2
+  - --sample_prompts
+  - /workspace/datasets/harmony_splatoon/model/sample/prompt.txt
+  - --log_with
+  - wandb
+  - --network_module
+  - lycoris.kohya
+  - --network_dim
+  - 128
+  - --use_8bit_adam
+  - --logging_dir
+  - /workspace/datasets/harmony_splatoon/log
+  - --v_noise
+  - --v_parameterization
+  - --v_noise_gamma
+  - 1
+  - --resolution
+  - 576
+  - --min_snr_gamma
+  - 1
+  - --sample_sampler
+  - k_dpm_2
+  - --color_aug
+  - --flip_aug
+  - --lr_scheduler
+  - cosine_with_restarts
+  - --seed
+  - 784793
+  - --max_train_steps
+  - 117
+  - ${args}
+  - --train_batch_size
+  - 5
+method: bayes
+metric:
+  goal: minimize
+  name: loss/val
+name: sweep
+parameters:
+  lr_scheduler_num_cycles:
+    distribution: int_uniform
+    max: 10
+    min: 1
+  noise_offset:
+    distribution: uniform
+    max: 1.0
+    min: 0.0
+  adaptive_noise_scale:
+    min: 0.0
+    max: 1.0
+  prior_loss_weight:
+    min: 0.0
+    max: 10.0
+  max_grad_norm:
+    min: 0.0
+    max: 10.0
+  lr_warmup_steps:
+    min: 0
+    max: 100
+  unet_lr:
+    min: 0.00000001
+    max: 0.001
+  text_encoder_lr:
+    min: 0.00000001
+    max: 0.001
+  network_alpha:
+    values: [1,8,16,24,32,40,48,56,64]
+      

@@ -3354,7 +3354,7 @@ def sample_images(
     else:
         scheduler_cls = DDIMScheduler
 
-    if args.v_parameterization:
+    if args.v_parameterization: # and args.v2:
         sched_init_args["prediction_type"] = "v_prediction"
 
     scheduler = scheduler_cls(
