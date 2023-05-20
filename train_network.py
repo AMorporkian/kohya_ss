@@ -25,6 +25,7 @@ global_step = 0
 loss_list = []
 loss_total = 0.0
 
+
 import sys
 
 sys.path.append(os.path.dirname(__file__))
@@ -131,7 +132,7 @@ def train(args, tuning_mode=False):
     # dataloaderを準備する
     # DataLoaderのプロセス数：0はメインプロセスになる
     n_workers = min(args.max_data_loader_n_workers, os.cpu_count() - 1)  # cpu_count-1 ただし最大で指定された数まで
-    train, val = torch.utils.data.random_split(train_dataset_group, [.85, .15])
+    train, val = torch.utils.data.random_split(train_dataset_group, [.75, .25])
     train_dataloader = torch.utils.data.DataLoader(
         train,
         batch_size=1,
